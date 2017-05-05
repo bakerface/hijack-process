@@ -50,23 +50,67 @@ namespace process {
         String::NewFromUtf8(isolate, "Expected process id to be a number")));
     }
     else {
-      task_t task;
+      mach_port_t task;
       int pid = args[0]->IntegerValue();
 
-      if (task_for_pid(mach_task_self(), pid, &task)) {
-        isolate->ThrowException(Exception::TypeError(
+      if (task_for_pid(mach_task_self(), pid, &task) != KERN_SUCCESS) {
+        isolate->ThrowException(Exception::Error(
           String::NewFromUtf8(isolate, "Unable to open process")));
       }
       else {
-        Local<Integer> handle = Integer::New(isolate, (int64_t) task);
+        Local<Integer> handle = Integer::New(isolate, task);
         args.GetReturnValue().Set(handle);
+      }
+    }
+  }
+
+  void process_read(const FunctionCallbackInfo<Value>& args) {
+    Isolate *isolate = args.GetIsolate();
+
+    if (args.Length() < 3) {
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+        "Expected handle, address, and size as arguments")));
+    }
+    else if (!args[0]->IsNumber()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected process handle to be a number")));
+    }
+    else if (!args[1]->IsNumber()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected address to be a number")));
+    }
+    else if (!args[2]->IsNumber()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected size to be a number")));
+    }
+    else {
+      pointer_t buffer;
+      task_t task = (task_t) args[0]->IntegerValue();
+      int64_t address = args[1]->IntegerValue();
+      uint32_t size = args[2]->Uint32Value();
+      uint32_t count = size;
+
+      if (vm_read(task, address, size, &buffer, &count) != KERN_SUCCESS) {
+        isolate->ThrowException(Exception::Error(
+          String::NewFromUtf8(isolate, "Unable to read process")));
+      }
+      else {
+        char *b = (char *) buffer;
+        Local<Array> value = Array::New(isolate, count);
+
+        for (uint32_t i = 0; i < count; i++) {
+          value->Set(i, Integer::NewFromUnsigned(isolate, b[i] & 0xff));
+        }
+
+        args.GetReturnValue().Set(value);
       }
     }
   }
 
   void init(Local<Object> exports) {
     NODE_SET_METHOD(exports, "open", process_open);
+    NODE_SET_METHOD(exports, "read", process_read);
   }
 
-  NODE_MODULE(surgeon, init)
+  NODE_MODULE(process, init)
 };

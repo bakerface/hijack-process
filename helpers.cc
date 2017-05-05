@@ -21,18 +21,27 @@
  *
  */
 
-var Platform = require('./build/Release/process.node');
+#include <node.h>
 
-function Process(id) {
-  this.handle = Platform.open(id);
-}
+char buffer[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-Process.prototype = {
-  read: function (address, size) {
-    return Platform.read(this.handle, address, size);
+namespace helpers {
+  using v8::FunctionCallbackInfo;
+  using v8::Number;
+  using v8::Isolate;
+  using v8::Local;
+  using v8::Object;
+  using v8::Value;
+
+  void get_buffer_address(const FunctionCallbackInfo<Value>& args) {
+    Isolate *isolate = args.GetIsolate();
+    Local<Number> handle = Number::New(isolate, (uint64_t) buffer);
+    args.GetReturnValue().Set(handle);
   }
-};
 
-module.exports = function (id) {
-  return new Process(id);
+  void init(Local<Object> exports) {
+    NODE_SET_METHOD(exports, "getBufferAddress", get_buffer_address);
+  }
+
+  NODE_MODULE(helpers, init)
 };

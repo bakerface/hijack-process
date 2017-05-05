@@ -23,7 +23,7 @@
 
 var hijack = require('..');
 
-test('can open a process', function () {
+test('can hijack a process', function () {
   var thisProcess = hijack(process.pid);
 
   expect(thisProcess.handle).toBeGreaterThan(0);
