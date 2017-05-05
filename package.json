@@ -1,6 +1,6 @@
 {
   "name": "hijack-process",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Inspect and manipulate the memory of running processes",
   "author": "Chris Baker <mail.chris.baker@gmail.com>",
   "license": "MIT",
