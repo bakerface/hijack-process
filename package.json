@@ -1,0 +1,34 @@
+{
+  "name": "hijack-process",
+  "version": "0.0.0",
+  "description": "Inspect and manipulate the memory of running processes",
+  "author": "Chris Baker <mail.chris.baker@gmail.com>",
+  "license": "MIT",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bakerface/hijack-process.git"
+  },
+  "keywords": [
+    "hijack",
+    "inspect",
+    "manipulate",
+    "process",
+    "memory"
+  ],
+  "scripts": {
+    "test": "xo && jest"
+  },
+  "devDependencies": {
+    "jest": "^19.0.2",
+    "xo": "^0.18.2"
+  },
+  "xo": {
+    "esnext": false,
+    "space": true,
+    "env": [
+      "node",
+      "jest"
+    ]
+  }
+}
