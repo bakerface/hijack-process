@@ -107,9 +107,52 @@ namespace process {
     }
   }
 
+  void process_write(const FunctionCallbackInfo<Value>& args) {
+    Isolate *isolate = args.GetIsolate();
+
+    if (args.Length() < 2) {
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
+        "Expected handle, address, and size as arguments")));
+    }
+    else if (!args[0]->IsNumber()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected process handle to be a number")));
+    }
+    else if (!args[1]->IsNumber()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected address to be a number")));
+    }
+    else if (!args[2]->IsArray()) {
+      isolate->ThrowException(Exception::TypeError(
+        String::NewFromUtf8(isolate, "Expected bytes to be an array")));
+    }
+    else {
+      task_t task = (task_t) args[0]->IntegerValue();
+      int64_t address = args[1]->IntegerValue();
+      Handle<Array> array = Handle<Array>::Cast(args[2]);
+      uint32_t length = array->Length();
+      uint8_t *data = (uint8_t *) malloc(length);
+
+      for (uint32_t i = 0; i < length; i++) {
+        data[i] = (uint8_t) array->Get(i)->IntegerValue();
+      }
+
+      if (vm_write(task, address, (pointer_t) data, length) != KERN_SUCCESS) {
+        free(data);
+
+        isolate->ThrowException(Exception::Error(
+          String::NewFromUtf8(isolate, "Unable to write process")));
+      }
+      else {
+        free(data);
+      }
+    }
+  }
+
   void init(Local<Object> exports) {
     NODE_SET_METHOD(exports, "open", process_open);
     NODE_SET_METHOD(exports, "read", process_read);
+    NODE_SET_METHOD(exports, "write", process_write);
   }
 
   NODE_MODULE(process, init)

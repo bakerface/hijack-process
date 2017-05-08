@@ -21,21 +21,19 @@
  *
  */
 
-var Platform = require('./build/Release/process.node');
+var hijack = require('..');
+var helpers = require('../build/Release/helpers.node');
 
-function Process(id) {
-  this.handle = Platform.open(id);
-}
+test('can write a byte array', function () {
+  var address = helpers.getBufferAddress();
+  var thisProcess = hijack(process.pid);
 
-Process.prototype = {
-  read: function (address, size) {
-    return Platform.read(this.handle, address, size);
-  },
-  write: function (address, bytes) {
-    return Platform.write(this.handle, address, bytes);
-  }
-};
+  thisProcess.write(address, [7, 6, 5, 4, 3, 2, 1, 0]);
 
-module.exports = function (id) {
-  return new Process(id);
-};
+  var descending = thisProcess.read(address, 8);
+  expect(descending).toEqual([7, 6, 5, 4, 3, 2, 1, 0]);
+
+  thisProcess.write(address, [0, 1, 2, 3, 4, 5, 6, 7]);
+  var ascending = thisProcess.read(address, 8);
+  expect(ascending).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+});
