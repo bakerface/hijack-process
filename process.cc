@@ -110,9 +110,9 @@ namespace process {
   void process_write(const FunctionCallbackInfo<Value>& args) {
     Isolate *isolate = args.GetIsolate();
 
-    if (args.Length() < 2) {
+    if (args.Length() < 3) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-        "Expected handle, address, and size as arguments")));
+        "Expected handle, address, and bytes as arguments")));
     }
     else if (!args[0]->IsNumber()) {
       isolate->ThrowException(Exception::TypeError(
