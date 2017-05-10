@@ -22,9 +22,10 @@
  */
 
 #include <node.h>
-#include <mach/mach.h>
-#include <mach/mach_init.h>
-#include <mach/mach_vm.h>
+
+#ifdef __APPLE__
+#include "apple.h"
+#endif
 
 namespace process {
   using v8::Array;
@@ -50,16 +51,15 @@ namespace process {
         String::NewFromUtf8(isolate, "Expected process id to be a number")));
     }
     else {
-      mach_port_t task;
-      int pid = args[0]->IntegerValue();
+      platform_handle_t handle;
 
-      if (task_for_pid(mach_task_self(), pid, &task) != KERN_SUCCESS) {
+      if (platform_process_open(args[0]->IntegerValue(), &handle) != PLATFORM_SUCCESS) {
         isolate->ThrowException(Exception::Error(
           String::NewFromUtf8(isolate, "Unable to open process")));
       }
       else {
-        Local<Integer> handle = Integer::New(isolate, task);
-        args.GetReturnValue().Set(handle);
+        Local<Integer> result = Integer::New(isolate, handle);
+        args.GetReturnValue().Set(result);
       }
     }
   }
@@ -84,25 +84,26 @@ namespace process {
         String::NewFromUtf8(isolate, "Expected size to be a number")));
     }
     else {
-      pointer_t buffer;
-      task_t task = (task_t) args[0]->IntegerValue();
-      int64_t address = args[1]->IntegerValue();
-      uint32_t size = args[2]->Uint32Value();
-      uint32_t count = size;
+      platform_handle_t handle = args[0]->IntegerValue();
+      platform_address_t address = args[1]->IntegerValue();
+      platform_size_t size = args[2]->IntegerValue();
+      platform_size_t count = size;
+      uint8_t *buffer = (uint8_t *) malloc(size);
 
-      if (vm_read(task, address, size, &buffer, &count) != KERN_SUCCESS) {
+      if (platform_process_read(handle, address, size, (platform_ptr_t) buffer, &count) != KERN_SUCCESS) {
+        free(buffer);
+
         isolate->ThrowException(Exception::Error(
           String::NewFromUtf8(isolate, "Unable to read process")));
       }
       else {
-        char *b = (char *) buffer;
-        Local<Array> value = Array::New(isolate, count);
+        Local<Array> result = Array::New(isolate, count);
 
-        for (uint32_t i = 0; i < count; i++) {
-          value->Set(i, Integer::NewFromUnsigned(isolate, b[i] & 0xff));
+        for (platform_size_t i = 0; i < count; i++) {
+          result->Set(i, Integer::NewFromUnsigned(isolate, buffer[i] & 0xff));
         }
 
-        args.GetReturnValue().Set(value);
+        args.GetReturnValue().Set(result);
       }
     }
   }
@@ -127,17 +128,17 @@ namespace process {
         String::NewFromUtf8(isolate, "Expected bytes to be an array")));
     }
     else {
-      task_t task = (task_t) args[0]->IntegerValue();
-      int64_t address = args[1]->IntegerValue();
+      platform_handle_t handle = args[0]->IntegerValue();
+      platform_address_t address = args[1]->IntegerValue();
       Handle<Array> array = Handle<Array>::Cast(args[2]);
-      uint32_t length = array->Length();
+      platform_size_t length = array->Length();
       uint8_t *data = (uint8_t *) malloc(length);
 
-      for (uint32_t i = 0; i < length; i++) {
+      for (platform_size_t i = 0; i < length; i++) {
         data[i] = (uint8_t) array->Get(i)->IntegerValue();
       }
 
-      if (vm_write(task, address, (pointer_t) data, length) != KERN_SUCCESS) {
+      if (platform_process_write(handle, address, (platform_ptr_t) data, length) != KERN_SUCCESS) {
         free(data);
 
         isolate->ThrowException(Exception::Error(
